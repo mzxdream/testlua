@@ -84,17 +84,37 @@ local peg_expression_parser = lpeg.P({
     exp = lpeg.V("term"),
     term = lpeg.Ct(lpeg.V("factor") * PegBinaryOptRP(peg_opt_term_capture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
     factor = lpeg.Ct(lpeg.V("basic") * PegBinaryOptRP(peg_opt_factor_capture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
-    func = lpeg.Ct(peg_func_capture * "(" * peg_space_match * PegTupleWrap(lpeg.V("exp")) * peg_space_match * ")"),
+    func = lpeg.Ct(peg_func_capture * "(" * peg_space_match * (PegTupleWrap(lpeg.V("exp") + peg_space_match)) * peg_space_match * ")"),
     basic = lpeg.V("func") + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")" + peg_var_capture + peg_num_capture,
-})
+}) * -1
 
 local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
     " 12345 + 12345", "1 + 2 + 3", " 1 * 2 * 3 ", "1 * 2 * 3 / 4 * 5 / 6 * 7",
     "1 + 2 * max(3, 4, 5)",
-    "1 + atk - def"
+    "1 + atk - def",
+    "1 + 2 * max()",
 }
 
 for _, v in ipairs(tt) do
     local tmp = peg_expression_parser:match(v)
+    print(v .. " -> " ..dump(tmp))
+end
+
+local bb = {
+    "atk = 1 + 2 * 3 / (5 + 6)",
+}
+
+local function PegExpressionGenerate(formula)
+    local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match) / tostring) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
+    if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
+        print("error")
+        return nil
+    end
+    print(formula_capture[1], formula_capture[2])
+    return formula_capture[2]
+end
+
+for _, v in ipairs(bb) do
+    local tmp = PegExpressionGenerate(v)
     print(v .. " -> " ..dump(tmp))
 end
