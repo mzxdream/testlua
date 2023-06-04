@@ -11,11 +11,22 @@ local peg_space_match = lpeg.S(" \n\t") ^ 0
 local peg_letter_match = lpeg.R("az", "AZ") ^ 1
 local peg_func_match = lpeg.P("min") + lpeg.P("max") + lpeg.P("ceil") + lpeg.P("floor")
 
--- capture
-local peg_num_capture = peg_space_match * (peg_num_match / tonumber) * peg_space_match
-local peg_opt_term_capture = peg_space_match * lpeg.C(lpeg.S("+-")) * peg_space_match
-local peg_opt_factor_capture = peg_space_match * lpeg.C(lpeg.S("*/%")) * peg_space_match
+local function PegSpaceWrap(pattern)
+    return peg_space_match * pattern * peg_space_match
+end
 
-print(peg_num_capture:match("12345.000"))
-print(peg_opt_term_capture:match("+-*/"))
-print(peg_opt_factor_capture:match("*/+-"))
+local function PegTupleWrap(pattern)
+    pattern = PegSpaceWrap(pattern)
+    return pattern * (',' * pattern)^0
+end
+
+-- capture
+local peg_num_capture = PegSpaceWrap(peg_num_match / tonumber)
+local peg_opt_term_capture = PegSpaceWrap(lpeg.C(lpeg.S("+-")))
+local peg_opt_factor_capture = PegSpaceWrap(lpeg.C(lpeg.S("*/%")))
+
+print(peg_num_capture:match("    12345.000    "))
+print(peg_opt_term_capture:match("  +-*/  "))
+print(peg_opt_factor_capture:match(" * / + - "))
+local d = table.pack(PegTupleWrap(peg_num_capture):match("12334 , 555, 666, 7777"))
+print(d[3])
