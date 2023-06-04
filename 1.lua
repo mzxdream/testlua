@@ -35,32 +35,51 @@ local function PegNumParse(pattern)
     }
 end
 
-local function PegOptParse(pattern)
+local function PegVarParse(pattern)
+    return {
+        t = "var",
+        val = pattern,
+    }
+end
+
+local function PegBinaryOptParse(pattern)
+    return {
+        t = "operator",
+        val = pattern,
+    }
+end
+
+local function PegFuncParse(pattern)
+    return {
+        t = "function",
+        val = pattern,
+    }
+end
+
+local function PegBinaryOptRP(pattern)
     return pattern / function (opt, right)
-        return right, {
-            t = "operator",
-            val = opt,
-        }
+        return right, opt
     end
 end
 
 -- capture
 local peg_num_capture = PegSpaceWrap(peg_num_match / PegNumParse)
-local peg_var_capture = PegSpaceWrap(lpeg.C(peg_var_match))
-local peg_opt_term_capture = PegSpaceWrap(lpeg.C(lpeg.S("+-")))
-local peg_opt_factor_capture = PegSpaceWrap(lpeg.C(lpeg.S("*/%")))
+local peg_var_capture = PegSpaceWrap(peg_var_match / PegVarParse)
+local peg_opt_term_capture = PegSpaceWrap(lpeg.S("+-") / PegBinaryOptParse)
+local peg_opt_factor_capture = PegSpaceWrap(lpeg.S("*/%") / PegBinaryOptParse)
 
 local peg_expression_parser = lpeg.P({
     "exp",
     exp = lpeg.V("term"),
-    term = lpeg.Ct(lpeg.V("factor") * PegOptParse(peg_opt_term_capture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
-    factor = lpeg.Ct(lpeg.V("basic") * PegOptParse(peg_opt_factor_capture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
-    basic = peg_num_capture + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")",
+    term = lpeg.Ct(lpeg.V("factor") * PegBinaryOptRP(peg_opt_term_capture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
+    factor = lpeg.Ct(lpeg.V("basic") * PegBinaryOptRP(peg_opt_factor_capture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
+    basic = peg_num_capture + peg_var_capture + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")",
 }) * -1
 
 local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
     " 12345 + 12345", "1 + 2 + 3", " 1 * 2 * 3 ", "1 * 2 * 3 / 4 * 5 / 6 * 7",
-    "1 + 2 * max(3, 4, 5)"
+    "1 + 2 * max(3, 4, 5)",
+    "1 + atk - def"
 }
 
 for _, v in ipairs(tt) do
