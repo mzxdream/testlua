@@ -108,7 +108,11 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
-local function PegExtractVars(exp_parse, t)
+local function Peg()
+    -- body
+end
+
+local function PegExpVarExtract(exp_parse, t)
     t = t or {}
     if exp_parse.t ~= nil then
         if exp_parse.t == "var" and not table.contains(t, exp_parse.val) then
@@ -116,13 +120,13 @@ local function PegExtractVars(exp_parse, t)
         end
     else
         for _, v in ipairs(exp_parse) do
-            PegExtractVars(v, t)
+            PegExpVarExtract(v, t)
         end
     end
     return t
 end
 
-local function PegExpressionGenerate(formula)
+local function PegExpAnalyze(formula)
     local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
     if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
         print("error1")
@@ -139,7 +143,7 @@ local Calc_%s = function()
     return %s 
 end
     ]]
-    local vars = PegExtractVars(exp_parse)
+    local vars = PegExpVarExtract(exp_parse)
     local exp_code = ""
     return name, vars, string.format(func_fmt, name, exp_code)
 end
@@ -150,6 +154,6 @@ local bb = {
 }
 
 for _, v in ipairs(bb) do
-    local name, vars, code = PegExpressionGenerate(v)
+    local name, vars, code = PegExpAnalyze(v)
     print(v .. " -> " .. name .. ", " .. dump(vars) .. ", " .. code)
 end
