@@ -34,24 +34,34 @@ local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
     return pattern * (',' * pattern)^0
 end
 
+local peg_test = 1
+
 local function PegNumParse(pattern)
+    if peg_test then
+        return "n_" .. pattern
+    end
     return { t = "number", val = tonumber(pattern), }
-    --return "n_" .. pattern
 end
 
 local function PegVarParse(pattern)
+    if peg_test then
+        return "v_" .. pattern
+    end
     return { t = "var", val = pattern, }
-    --return "v_" .. pattern
 end
 
 local function PegBinaryOptParse(pattern)
+    if peg_test then
+        return "o_" .. pattern
+    end
     return { t = "operator", val = pattern, }
-    --return "o_" .. pattern
 end
 
 local function PegFuncParse(pattern)
+    if peg_test then
+        return "f_" .. pattern
+    end
     return { t = "function", val = pattern, }
-    --return "f_" .. pattern
 end
 
 local function PegBinaryOptRP(pattern)
@@ -81,6 +91,7 @@ local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
     "1 + 2 * max(3, 4, 5)",
     "1 + atk - def",
     "1 + 2 * max()",
+    "atk",
 }
 
 for _, v in ipairs(tt) do
@@ -88,24 +99,31 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
+local function PegExtractVars(exp_parse)
+    local t = {}
 
-local function PegExtractVars(vars)
+
+    return t
 end
 
 local function PegExpressionGenerate(formula)
     local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
     if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
-        print("error")
+        print("error1")
+        return nil
+    end
+    local exp_parse = peg_expression_parser:match(formula_capture[2])
+    if exp_parse == nil then
+        print("error2")
         return nil
     end
     local name = formula_capture[1]
-    local value = formula_capture[2]
     local func_fmt = [[
-local Calc%s = function()
+local Calc_%s = function()
     return %s 
 end
     ]]
-    local vars = {}
+    local vars = PegExtractVars(exp_parse)
     local exp_code = ""
     return name, vars, string.format(func_fmt, name, exp_code)
 end
