@@ -148,6 +148,10 @@ local function PegExpBaseGenerate(exp_parse)
                 table.insert(tmp, PegExpBaseGenerate(v))
             end
         end
+        if #tmp ~= 1 then
+            print("error7")
+            return ""
+        end
         return tmp[1]
     end
 end
@@ -203,7 +207,7 @@ end
 
 local bb = {
     "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
-    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, 2) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
 }
 
 for _, v in ipairs(bb) do
