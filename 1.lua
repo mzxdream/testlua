@@ -35,6 +35,12 @@ local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
     return pattern * (',' * pattern)^0
 end
 
+local function PegOptPolishWrap(pattern)
+    return pattern / function (left, opt, right)
+        return opt, left, right
+    end
+end
+
 -- capture
 local peg_num_capture = PegSpaceWrap(peg_num_match / tonumber)
 local peg_opt_term_capture = PegSpaceWrap(lpeg.C(lpeg.S("+-")))
@@ -47,6 +53,10 @@ local d = lpeg.Ct(PegTupleWrap(peg_num_capture)):match("12334 , 555, 666, 7777")
 print(d[3])
 
 
-local peg_factor_capture = lpeg.Ct(peg_num_capture * peg_opt_factor_capture * peg_num_capture + peg_num_capture)
-local t = peg_factor_capture:match("1 * 2 + 1")
-print(dump(t))
+local peg_factor_capture = lpeg.Ct(PegOptPolishWrap(peg_num_capture * peg_opt_factor_capture * peg_num_capture) + peg_num_capture)
+
+local tt = {"1 * 2 + 1", "1234", "1234.6", " 12345 + 12345"}
+for _, v in ipairs(tt) do
+    local tmp = peg_factor_capture:match(v)
+    print(v .. " -> " ..dump(tmp))
+end
