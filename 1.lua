@@ -206,16 +206,18 @@ end
 end
 
 local bb = {
-    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp) + ",
-    "111atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
+    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
 }
 
 for _, v in ipairs(bb) do
-    print("11111111111111111begin:", v)
+    print("11111111111111111begin")
+    print("formula: " .. v)
     local name, vars, code = PegExpAnalyze(v)
     if name ~= nil then
-        print(name .. ", " .. dump(vars))
+        print("name = " .. name .. ", vars = " .. dump(vars))
+        print("code = ")
         print(code)
     end
-    print("11111111111111111end:", v)
+    print("11111111111111111end")
 end
