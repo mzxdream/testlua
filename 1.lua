@@ -100,21 +100,23 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
-local bb = {
-    "atk = 1 + 2 * 3 / (5 + 6)",
-}
-
 local function PegExpressionGenerate(formula)
-    local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match) / tostring) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
+    local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
     if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
         print("error")
         return nil
     end
-    print(formula_capture[1], formula_capture[2])
-    return formula_capture[2]
+    local name = formula_capture[1]
+    local exp = formula_capture[2]
+
+    return name, exp
 end
 
+local bb = {
+    "atk = 1 + 2 * 3 / (5 + 6)",
+}
+
 for _, v in ipairs(bb) do
-    local tmp = PegExpressionGenerate(v)
-    print(v .. " -> " ..dump(tmp))
+    local name, exp = PegExpressionGenerate(v)
+    print(v .. " -> " .. name .. ", " .. exp)
 end
