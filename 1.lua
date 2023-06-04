@@ -100,11 +100,11 @@ local peg_opt_factor_capture = PegSpaceWrap(lpeg.S("*/%") / PegBinaryOptParse)
 
 local peg_expression_parser = lpeg.P({
     "exp",
-    exp = lpeg.V("term"),
+    exp = PegSpaceWrap(lpeg.V("term")),
     term = lpeg.Ct(lpeg.V("factor") * PegBinaryOptRP(peg_opt_term_capture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
     factor = lpeg.Ct(lpeg.V("basic") * PegBinaryOptRP(peg_opt_factor_capture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
     func = lpeg.Ct(peg_func_capture * "(" * peg_space_match * (PegTupleWrap(lpeg.V("exp") + peg_space_match)) * peg_space_match * ")"),
-    basic = lpeg.V("func") + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")" + peg_var_capture + peg_num_capture,
+    basic = lpeg.V("func") + "(" * PegSpaceWrap(lpeg.V("exp")) * ")" + peg_var_capture + peg_num_capture,
 }) * -1
 
 local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
@@ -221,6 +221,7 @@ local bb = {
     "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
     "atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp))",
     "test = min(max(floor(1.111100), 2.30), 3.1)",
+    "actuale_vasion_chance = (1 - evasion_chance) ",
 }
 
 for _, v in ipairs(bb) do
