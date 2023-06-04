@@ -23,37 +23,47 @@ local peg_float_match = peg_sign_match * peg_dec_match * (lpeg.P(".") * lpeg.R("
 local peg_num_match = peg_sign_match * (peg_hex_match + peg_dec_match * (lpeg.P(".") * lpeg.R("09") ^ 1) ^ -1 * (lpeg.S("eE") * peg_sign_match * peg_dec_match) ^ -1)
 local peg_space_match = lpeg.S(" \n\t") ^ 0
 local peg_var_match = lpeg.R("az", "AZ", "__") * lpeg.R("az", "AZ", "__", "09") ^ 0
+local peg_func_match = peg_var_match
 
 local function PegSpaceWrap(pattern) -- " pattern "
     return peg_space_match * pattern * peg_space_match
 end
 
+local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
+    pattern = PegSpaceWrap(pattern)
+    return pattern * (',' * pattern)^0
+end
+
 local function PegNumParse(pattern)
-    return {
-        t = "number",
-        val = tonumber(pattern),
-    }
+    --return {
+    --    t = "number",
+    --    val = tonumber(pattern),
+    --}
+    return "n_" .. pattern
 end
 
 local function PegVarParse(pattern)
-    return {
-        t = "var",
-        val = pattern,
-    }
+    return "v_" .. pattern
+    --return {
+    --    t = "var",
+    --    val = pattern,
+    --}
 end
 
 local function PegBinaryOptParse(pattern)
-    return {
-        t = "operator",
-        val = pattern,
-    }
+    return "o_" .. pattern
+    --return {
+    --    t = "operator",
+    --    val = pattern,
+    --}
 end
 
 local function PegFuncParse(pattern)
-    return {
-        t = "function",
-        val = pattern,
-    }
+    return "f_" .. pattern
+    --return {
+    --    t = "function",
+    --    val = pattern,
+    --}
 end
 
 local function PegBinaryOptRP(pattern)
@@ -65,6 +75,7 @@ end
 -- capture
 local peg_num_capture = PegSpaceWrap(peg_num_match / PegNumParse)
 local peg_var_capture = PegSpaceWrap(peg_var_match / PegVarParse)
+local peg_func_capture = PegSpaceWrap(peg_func_match / PegFuncParse)
 local peg_opt_term_capture = PegSpaceWrap(lpeg.S("+-") / PegBinaryOptParse)
 local peg_opt_factor_capture = PegSpaceWrap(lpeg.S("*/%") / PegBinaryOptParse)
 
@@ -73,8 +84,9 @@ local peg_expression_parser = lpeg.P({
     exp = lpeg.V("term"),
     term = lpeg.Ct(lpeg.V("factor") * PegBinaryOptRP(peg_opt_term_capture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
     factor = lpeg.Ct(lpeg.V("basic") * PegBinaryOptRP(peg_opt_factor_capture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
-    basic = peg_num_capture + peg_var_capture + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")",
-}) * -1
+    func = lpeg.Ct(peg_func_capture * "(" * peg_space_match * PegTupleWrap(lpeg.V("exp")) * peg_space_match * ")"),
+    basic = lpeg.V("func") + "(" * peg_space_match * lpeg.V("exp") * peg_space_match * ")" + peg_var_capture + peg_num_capture,
+})
 
 local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
     " 12345 + 12345", "1 + 2 + 3", " 1 * 2 * 3 ", "1 * 2 * 3 / 4 * 5 / 6 * 7",
