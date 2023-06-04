@@ -1,5 +1,20 @@
 local lpeg = require("lpeg")
 
+local function dump(o)
+    if type(o) == 'table' then
+        local s = '{ '
+        for k, v in pairs(o) do
+            if type(k) ~= 'number' then
+                k = '"'..k..'"'
+            end
+            s = s .. '['..k..'] = ' .. dump(v) .. ', '
+        end
+        return s .. '}'
+    else
+        return tostring(o)
+    end
+end
+
 -- match
 local peg_sign_match = lpeg.S("+-") ^ -1
 local peg_hex_match = lpeg.P("0") * lpeg.S("xX") * lpeg.R("09", "af", "AF") ^ 1
@@ -11,11 +26,11 @@ local peg_space_match = lpeg.S(" \n\t") ^ 0
 local peg_letter_match = lpeg.R("az", "AZ") ^ 1
 local peg_func_match = lpeg.P("min") + lpeg.P("max") + lpeg.P("ceil") + lpeg.P("floor")
 
-local function PegSpaceWrap(pattern)
+local function PegSpaceWrap(pattern) -- " pattern "
     return peg_space_match * pattern * peg_space_match
 end
 
-local function PegTupleWrap(pattern)
+local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
     pattern = PegSpaceWrap(pattern)
     return pattern * (',' * pattern)^0
 end
@@ -28,5 +43,10 @@ local peg_opt_factor_capture = PegSpaceWrap(lpeg.C(lpeg.S("*/%")))
 print(peg_num_capture:match("    12345.000    "))
 print(peg_opt_term_capture:match("  +-*/  "))
 print(peg_opt_factor_capture:match(" * / + - "))
-local d = table.pack(PegTupleWrap(peg_num_capture):match("12334 , 555, 666, 7777"))
+local d = lpeg.Ct(PegTupleWrap(peg_num_capture)):match("12334 , 555, 666, 7777")
 print(d[3])
+
+
+local peg_factor_capture = lpeg.Ct(peg_num_capture * peg_opt_factor_capture * peg_num_capture + peg_num_capture)
+local t = peg_factor_capture:match("1 * 2 + 1")
+print(dump(t))
