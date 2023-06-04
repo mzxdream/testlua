@@ -219,11 +219,12 @@ end
 
 local bb = {
     "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
-    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(min(2,3),4) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp))",
+    "test = min(max(floor(1.111100), 2.30), 3.1)",
 }
 
 for _, v in ipairs(bb) do
-    print("11111111111111111begin")
+    print("11111111111111111111111111111111111111111111111111111111111begin")
     print("formula: " .. v)
     local name, vars, code = PegExpAnalyze(v)
     if name ~= nil then
@@ -231,5 +232,22 @@ for _, v in ipairs(bb) do
         print("code = ")
         print(code)
     end
-    print("11111111111111111end")
+    print("11111111111111111111111111111111111111111111111111111111111end")
 end
+
+
+
+--local def = 10
+--local maxhp = 100
+--local min = math.min
+--local max = math.max
+--
+--local atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp)) 
+--
+--
+--local Calc_atk = function()
+--    return (def + (((2 * 3) / (5 + 6)) / (def + math.max(def, (math.max(math.min(2, 3), 4) / maxhp)))))
+--end
+--
+--print("xxx:" .. tostring(atk))
+--print("yyy:" .. tostring(Calc_atk()))
