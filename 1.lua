@@ -100,6 +100,10 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
+
+local function PegExtractVars(vars)
+end
+
 local function PegExpressionGenerate(formula)
     local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
     if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
@@ -107,9 +111,15 @@ local function PegExpressionGenerate(formula)
         return nil
     end
     local name = formula_capture[1]
-    local exp = formula_capture[2]
-
-    return name, exp
+    local value = formula_capture[2]
+    local func_fmt = [[
+local Calc%s = function()
+    return %s 
+end
+    ]]
+    local vars = {}
+    local exp_code = ""
+    return name, vars, string.format(func_fmt, name, exp_code)
 end
 
 local bb = {
@@ -117,6 +127,6 @@ local bb = {
 }
 
 for _, v in ipairs(bb) do
-    local name, exp = PegExpressionGenerate(v)
-    print(v .. " -> " .. name .. ", " .. exp)
+    local name, vars, code = PegExpressionGenerate(v)
+    print(v .. " -> " .. name .. ", " .. dump(vars) .. ", " .. code)
 end
