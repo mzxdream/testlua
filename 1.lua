@@ -49,7 +49,7 @@ local function PegNumParse(pattern)
     if peg_test then
         return "n_" .. pattern
     end
-    return { t = "number", val = tonumber(pattern), }
+    return { t = "num", val = tonumber(pattern), }
 end
 
 local function PegVarParse(pattern)
@@ -63,14 +63,14 @@ local function PegBinaryOptParse(pattern)
     if peg_test then
         return "o_" .. pattern
     end
-    return { t = "operator", val = pattern, }
+    return { t = "opt_bin", val = pattern, }
 end
 
 local function PegFuncParse(pattern)
     if peg_test then
         return "f_" .. pattern
     end
-    return { t = "function", val = pattern, }
+    return { t = "func", val = pattern, }
 end
 
 local function PegBinaryOptRP(pattern)
@@ -108,8 +108,61 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
-local function Peg()
-    -- body
+local PegExpFuncGenerate
+
+local function PegExpBaseGenerate(exp_parse)
+    if exp_parse.t ~= nil then
+        if exp_parse.t == "num" or exp_parse.t == "var" then
+            return tostring(exp_parse.val)
+        else
+            print("error3")
+            return ""
+        end
+    else
+        if #exp_parse < 1 then
+            print("error4")
+            return ""
+        end
+        if exp_parse[1].t == "func" then
+            return PegExpFuncGenerate(exp_parse)
+        end
+        local tmp = {}
+        for _, v in ipairs(exp_parse) do
+            if v.t ~= nil then
+                if v.t == "num" or v.t == "var" then
+                    table.insert(tmp, tostring(v.val))
+                elseif v.t == "opt_bin" then
+                    if #tmp < 2 then
+                        print("error6")
+                        return ""
+                    end
+                    local v1 = tmp[#tmp - 1]
+                    local v2 = tmp[#tmp]
+                    tmp[#tmp - 1] = "(" .. v1 .. " " .. v.val .. " " .. v2 .. ")"
+                    table.remove(tmp, #tmp)
+                else
+                    print("error5")
+                    return ""
+                end
+            else
+                table.insert(tmp, PegExpBaseGenerate(v))
+            end
+        end
+        return tmp[1]
+    end
+end
+
+function PegExpFuncGenerate(exp_parse)
+    local func_name = exp_parse[1].val
+    local func_args = {}
+    for i = 2, #exp_parse do
+        table.insert(func_args, PegExpBaseGenerate(exp_parse[i]))
+    end
+    return func_name .. "(" .. table.concat(func_args, ", ") .. ")"
+end
+
+local function PegExpCodeGenerate(exp_parse)
+    return PegExpBaseGenerate(exp_parse)
 end
 
 local function PegExpVarExtract(exp_parse, t)
@@ -144,7 +197,7 @@ local Calc_%s = function()
 end
     ]]
     local vars = PegExpVarExtract(exp_parse)
-    local exp_code = ""
+    local exp_code = PegExpCodeGenerate(exp_parse)
     return name, vars, string.format(func_fmt, name, exp_code)
 end
 
@@ -155,5 +208,7 @@ local bb = {
 
 for _, v in ipairs(bb) do
     local name, vars, code = PegExpAnalyze(v)
-    print(v .. " -> " .. name .. ", " .. dump(vars) .. ", " .. code)
+    print(v)
+    print(name .. ", " .. dump(vars))
+    print(code)
 end
