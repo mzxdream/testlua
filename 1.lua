@@ -35,35 +35,23 @@ local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
 end
 
 local function PegNumParse(pattern)
-    --return {
-    --    t = "number",
-    --    val = tonumber(pattern),
-    --}
-    return "n_" .. pattern
+    return { t = "number", val = tonumber(pattern), }
+    --return "n_" .. pattern
 end
 
 local function PegVarParse(pattern)
-    return "v_" .. pattern
-    --return {
-    --    t = "var",
-    --    val = pattern,
-    --}
+    return { t = "var", val = pattern, }
+    --return "v_" .. pattern
 end
 
 local function PegBinaryOptParse(pattern)
-    return "o_" .. pattern
-    --return {
-    --    t = "operator",
-    --    val = pattern,
-    --}
+    return { t = "operator", val = pattern, }
+    --return "o_" .. pattern
 end
 
 local function PegFuncParse(pattern)
-    return "f_" .. pattern
-    --return {
-    --    t = "function",
-    --    val = pattern,
-    --}
+    return { t = "function", val = pattern, }
+    --return "f_" .. pattern
 end
 
 local function PegBinaryOptRP(pattern)
