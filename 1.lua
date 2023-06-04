@@ -185,7 +185,7 @@ end
 
 local function PegExpAnalyze(formula)
     local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
-    if #formula_capture ~= 2 or formula_capture[1] == nil or formula_capture[2] == nil then
+    if formula_capture == nil or formula_capture[1] == nil or formula_capture[2] == nil then
         print("error1")
         return nil
     end
@@ -206,13 +206,16 @@ end
 end
 
 local bb = {
-    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
-    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
+    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp) + ",
+    "111atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
 }
 
 for _, v in ipairs(bb) do
+    print("11111111111111111begin:", v)
     local name, vars, code = PegExpAnalyze(v)
-    print(v)
-    print(name .. ", " .. dump(vars))
-    print(code)
+    if name ~= nil then
+        print(name .. ", " .. dump(vars))
+        print(code)
+    end
+    print("11111111111111111end:", v)
 end
