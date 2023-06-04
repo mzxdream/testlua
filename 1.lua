@@ -13,6 +13,15 @@ local function dump(o)
     end
 end
 
+function table.contains(table, element)
+    for _, value in pairs(table) do
+        if value == element then
+            return true
+        end
+    end
+    return false
+end
+
 local lpeg = require("lpeg")
 -- match
 local peg_sign_match = lpeg.S("+-") ^ -1
@@ -34,7 +43,7 @@ local function PegTupleWrap(pattern) -- "pattern,pattern,pattern"
     return pattern * (',' * pattern)^0
 end
 
-local peg_test = 1
+local peg_test = false
 
 local function PegNumParse(pattern)
     if peg_test then
@@ -99,10 +108,17 @@ for _, v in ipairs(tt) do
     print(v .. " -> " ..dump(tmp))
 end
 
-local function PegExtractVars(exp_parse)
-    local t = {}
-
-
+local function PegExtractVars(exp_parse, t)
+    t = t or {}
+    if exp_parse.t ~= nil then
+        if exp_parse.t == "var" and not table.contains(t, exp_parse.val) then
+            table.insert(t, exp_parse.val)
+        end
+    else
+        for _, v in ipairs(exp_parse) do
+            PegExtractVars(v, t)
+        end
+    end
     return t
 end
 
@@ -129,7 +145,8 @@ end
 end
 
 local bb = {
-    "atk = 1 + 2 * 3 / (5 + 6)",
+    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, 2) / maxhp)",
 }
 
 for _, v in ipairs(bb) do
