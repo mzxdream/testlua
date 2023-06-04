@@ -222,6 +222,9 @@ local bb = {
     "atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp))",
     "test = min(max(floor(1.111100), 2.30), 3.1)",
     "actuale_vasion_chance = (1 - evasion_chance) ",
+    [[
+        actual_damage = magical_damage * (1 + magic_amplification) * (1 - innate_resistance) * (1 - magic_resistance_of_item) * (1 - magic_resistance_of_first_ability) * (1 - magic_resistance_of_second_ability)
+    ]],
 }
 
 for _, v in ipairs(bb) do
