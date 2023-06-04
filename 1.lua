@@ -66,11 +66,23 @@ local function PegBinaryOptParse(pattern)
     return { t = "opt_bin", val = pattern, }
 end
 
+local peg_func_transers = {
+    floor = "math.floor",
+    max = "math.max",
+    min = "math.min",
+    ceil = "math.ceil",
+}
+
 local function PegFuncParse(pattern)
-    if peg_test then
-        return "f_" .. pattern
+    local v = peg_func_transers[pattern]
+    if v == nil then
+        print("error8"..pattern)
+        return nil
     end
-    return { t = "func", val = pattern, }
+    if peg_test then
+        return "f_" .. v 
+    end
+    return { t = "func", val = v, }
 end
 
 local function PegBinaryOptRP(pattern)
@@ -207,7 +219,7 @@ end
 
 local bb = {
     "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
-    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(2,3)) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def, max(min(2,3),4) / maxhp)",
 }
 
 for _, v in ipairs(bb) do
