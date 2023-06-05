@@ -102,11 +102,9 @@ local expGrammar = P({
     basic = V("func") + "(" * V("exp") * ")" + varCapture + numCapture,
 }) * -1
 
-local generateFuncCode
-local generateTupleCode
 local generateExpCode
 
-function generateFuncCode(expParser)
+local function generateFuncCode(expParser)
     local funcName = expParser[1].val
     local funcArgs = {}
     for i = 2, #expParser do
@@ -119,7 +117,7 @@ function generateFuncCode(expParser)
     return strfmt("%s(%s)", funcName, tconcat(funcArgs, ","))
 end
 
-function generateTupleCode(expParser)
+local function generateTupleCode(expParser)
     if #expParser == 0 then
         error("exp parser is empty")
         return nil
