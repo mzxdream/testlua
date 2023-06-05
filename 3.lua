@@ -22,8 +22,16 @@ local function contains(table, val)
     return false
 end
 
+local function error(fmt, ...)
+    print(fmt, ...)
+end
+
+local tcontains = contains
+local tconcat = table.concat
+local strfmt = string.format
+
 local lpeg = require("lpeg")
-local P, S, R = lpeg.P, lpeg.S, lpeg.R
+local P, S, R, V, C, Ct = lpeg.P, lpeg.S, lpeg.R, lpeg.V, lpeg.C, lpeg.Ct
 ---pattern
 local signPatt = S("+-") ^ -1
 local hexPatt = signPatt * P("0") * S("xX") * R("09", "af", "AF") ^ 1
@@ -62,21 +70,21 @@ local function parseBinaryOptPatt(patt)
     return { t = "opt_binary", val = patt, }
 end
 
-local function parseNumPatt(patt)
-    return "n_" .. patt
-end
-
-local function parseVarPatt(patt)
-    return "v_" .. patt
-end
-
-local function parseFuncPatt(patt)
-    return "f_" .. patt
-end
-
-local function parseBinaryOptPatt(patt)
-    return "o_" .. patt
-end
+--local function parseNumPatt(patt)
+--    return "n_" .. patt
+--end
+--
+--local function parseVarPatt(patt)
+--    return "v_" .. patt
+--end
+--
+--local function parseFuncPatt(patt)
+--    return "f_" .. patt
+--end
+--
+--local function parseBinaryOptPatt(patt)
+--    return "o_" .. patt
+--end
 
 ---capture
 local numCapture = wrapSpacePatt(numPatt / parseNumPatt)
@@ -85,146 +93,127 @@ local funcCapture = wrapSpacePatt(funcPatt / parseFuncPatt)
 local optTermCapture = wrapSpacePatt(optTermPatt / parseBinaryOptPatt)
 local optFactorCapture = wrapSpacePatt(optFactorPatt / parseBinaryOptPatt)
 
-local expGrammar = lpeg.P({
+local expGrammar = P({
     "exp",
-    exp = wrapSpacePatt(lpeg.V("term")),
-    term = lpeg.Ct(lpeg.V("factor") * (optTermCapture * lpeg.V("factor")) ^ 1) + lpeg.V("factor"),
-    factor = lpeg.Ct(lpeg.V("basic") * (optFactorCapture * lpeg.V("basic")) ^ 1) + lpeg.V("basic"),
-    func = lpeg.Ct(funcCapture * "(" * (wrapTuplePatt(lpeg.V("exp")) + spacePatt) * ")"),
-    basic = lpeg.V("func") + "(" * lpeg.V("exp") * ")" + varCapture + numCapture,
+    exp = wrapSpacePatt(V("term")),
+    term = Ct(V("factor") * (optTermCapture * V("factor")) ^ 1) + V("factor"),
+    factor = Ct(V("basic") * (optFactorCapture * V("basic")) ^ 1) + V("basic"),
+    func = Ct(funcCapture * "(" * (wrapTuplePatt(V("exp")) + spacePatt) * ")"),
+    basic = V("func") + "(" * V("exp") * ")" + varCapture + numCapture,
 }) * -1
 
-local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
-    " 12345 + 12345", "1 + 2 + 3", " 1 * 2 * 3 ", "1 * 2 * 3 / 4 * 5 / 6 * 7",
-    "1 + 2 * max(3, 4, 5)",
-    "1 + atk - def",
-    "1 + 2 * max()",
-    "atk",
+local generateFuncCode
+local generateFormulaCode
+local generateExpCode
+
+function generateFuncCode(expParser)
+    local funcName = expParser[1].val
+    local funcArgs = {}
+    for i = 2, #expParser do
+        local v = generateExpCode(expParser[i])
+        if v == nil then
+            return nil
+        end
+        table.insert(funcArgs, v)
+    end
+    return strfmt("%s(%s)", funcName, tconcat(funcArgs, ","))
+end
+
+function generateFormulaCode(expParser)
+    if #expParser == 0 then
+        error("exp parser is empty")
+        return nil
+    end
+    local tmp = {}
+    for _, v in ipairs(expParser) do
+        local t, isFormula = generateExpCode(v)
+        if t == nil then
+            return nil
+        end
+        if isFormula then
+            t = strfmt("(%s)", t)
+        end
+        table.insert(tmp, t)
+    end
+    return tconcat(tmp)
+end
+
+function generateExpCode(expParser)
+    local t = expParser.t
+    if t ~= nil then
+        if t == "num" or t == "var" then
+            return expParser.val
+        end
+        error("generate t is %s->%s not basic value", t, expParser.val)
+        return nil
+    end
+    if #expParser == 0 then
+        error("generate exp parser is empty")
+        return nil
+    end
+    if expParser[1].t == "func" then
+        return generateFuncCode(expParser)
+    end
+    return generateFormulaCode(expParser), true
+end
+
+local function extractExpVars(expParser, vars)
+    vars = vars or {}
+    if expParser.t == "var" and not tcontains(vars, expParser.val) then
+        table.insert(vars, expParser.val)
+        return vars
+    end
+    for _, v in ipairs(expParser) do
+        extractExpVars(v, vars)
+    end
+    return vars
+end
+
+local function analyzeExp(exp)
+    local expArr = Ct(wrapSpacePatt(varPatt / tostring) * "=" * C(P(1) ^ 1)):match(exp)
+    if expArr == nil or #expArr ~= 2 then
+        error("analyze exp failed:%s", exp)
+        return nil
+    end
+    local expParser = expGrammar:match(expArr[2])
+    if expParser == nil then
+        error("parse exp failed:%s", expArr[2])
+        return nil
+    end
+    local expVars = extractExpVars(expParser)
+    if expVars == nil then
+        error("extract exp vars failed:%s", expArr[2])
+        return nil
+    end
+    local expCode = generateExpCode(expParser)
+    if expCode == nil then
+        error("generate exp code failed:%s", expArr[2])
+        return nil
+    end
+    return expArr[1], expVars, strfmt("return function() %s end", expCode)
+end
+
+local bb = {
+    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
+    "atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp))",
+    "test = min(max(floor(1.111100), 2.30), 3.1)",
+    "actuale_vasion_chance = (1 - evasion_chance) ",
+    --[[
+    --    actual_damage = magical_damage * (1 + magic_amplification) * (1 - innate_resistance) * (1 - magic_resistance_of_item) * (1 - magic_resistance_of_first_ability) * (1 - magic_resistance_of_second_ability)
+    --]]
 }
 
-for _, v in ipairs(tt) do
-    local tmp = expGrammar:match(v)
-    print(v .. " -> " ..dump(tmp))
+for _, v in ipairs(bb) do
+    print("11111111111111111111111111111111111111111111111111111111111begin")
+    print("formula: " .. v)
+    local name, vars, code = analyzeExp(v)
+    if name ~= nil then
+        print("name = " .. name .. ", vars = " .. dump(vars))
+        print("code = ")
+        print(code)
+    end
+    print("11111111111111111111111111111111111111111111111111111111111end")
 end
---
---local PegExpFuncGenerate
---
---local function PegExpBaseGenerate(exp_parse)
---    if exp_parse.t ~= nil then
---        if exp_parse.t == "num" or exp_parse.t == "var" then
---            return tostring(exp_parse.val)
---        else
---            print("error3")
---            return ""
---        end
---    else
---        if #exp_parse < 1 then
---            print("error4")
---            return ""
---        end
---        if exp_parse[1].t == "func" then
---            return PegExpFuncGenerate(exp_parse)
---        end
---        local tmp = {}
---        for _, v in ipairs(exp_parse) do
---            if v.t ~= nil then
---                if v.t == "num" or v.t == "var" then
---                    table.insert(tmp, tostring(v.val))
---                elseif v.t == "opt_bin" then
---                    if #tmp < 2 then
---                        print("error6")
---                        return ""
---                    end
---                    local v1 = tmp[#tmp - 1]
---                    local v2 = tmp[#tmp]
---                    tmp[#tmp - 1] = "(" .. v1 .. " " .. v.val .. " " .. v2 .. ")"
---                    table.remove(tmp, #tmp)
---                else
---                    print("error5")
---                    return ""
---                end
---            else
---                table.insert(tmp, PegExpBaseGenerate(v))
---            end
---        end
---        if #tmp ~= 1 then
---            print("error7")
---            return ""
---        end
---        return tmp[1]
---    end
---end
---
---function PegExpFuncGenerate(exp_parse)
---    local func_name = exp_parse[1].val
---    local func_args = {}
---    for i = 2, #exp_parse do
---        table.insert(func_args, PegExpBaseGenerate(exp_parse[i]))
---    end
---    return func_name .. "(" .. table.concat(func_args, ", ") .. ")"
---end
---
---local function PegExpCodeGenerate(exp_parse)
---    return PegExpBaseGenerate(exp_parse)
---end
---
---local function PegExpVarExtract(exp_parse, t)
---    t = t or {}
---    if exp_parse.t ~= nil then
---        if exp_parse.t == "var" and not table.contains(t, exp_parse.val) then
---            table.insert(t, exp_parse.val)
---        end
---    else
---        for _, v in ipairs(exp_parse) do
---            PegExpVarExtract(v, t)
---        end
---    end
---    return t
---end
---
---local function PegExpAnalyze(formula)
---    local formula_capture = lpeg.Ct((PegSpaceWrap(peg_var_match / tostring)) * "=" * lpeg.C(lpeg.P(1)^1)):match(formula)
---    if formula_capture == nil or formula_capture[1] == nil or formula_capture[2] == nil then
---        print("error1")
---        return nil
---    end
---    local exp_parse = peg_expression_parser:match(formula_capture[2])
---    if exp_parse == nil then
---        print("error2")
---        return nil
---    end
---    local name = formula_capture[1]
---    local func_fmt = [[
---local Calc_%s = function()
---    return %s
---end
---    ]]
---    local vars = PegExpVarExtract(exp_parse)
---    local exp_code = PegExpCodeGenerate(exp_parse)
---    return name, vars, string.format(func_fmt, name, exp_code)
---end
---
---local bb = {
---    "atk = 1 + 2 * 3 / (5 + 6) / (def + max(def2, 2) / maxhp)",
---    "atk = def + 2 * 3 / (5 + 6) / (def + max(def,max(min(2,3),4) / maxhp))",
---    "test = min(max(floor(1.111100), 2.30), 3.1)",
---    "actuale_vasion_chance = (1 - evasion_chance) ",
---    --[[
---    --    actual_damage = magical_damage * (1 + magic_amplification) * (1 - innate_resistance) * (1 - magic_resistance_of_item) * (1 - magic_resistance_of_first_ability) * (1 - magic_resistance_of_second_ability)
---    --]]
---}
---
---for _, v in ipairs(bb) do
---    print("11111111111111111111111111111111111111111111111111111111111begin")
---    print("formula: " .. v)
---    local name, vars, code = PegExpAnalyze(v)
---    if name ~= nil then
---        print("name = " .. name .. ", vars = " .. dump(vars))
---        print("code = ")
---        print(code)
---    end
---    print("11111111111111111111111111111111111111111111111111111111111end")
---end
 --
 --
 --
@@ -244,3 +233,15 @@ end
 ----print("yyy:" .. tostring(Calc_atk()))
 --io.write()
 --
+--local tt = {"1 * 2 + 1", "1 + 2 * 1", "3 * (1 + 2)", "1234", "1234.6",
+--    " 12345 + 12345", "1 + 2 + 3", " 1 * 2 * 3 ", "1 * 2 * 3 / 4 * 5 / 6 * 7",
+--    "1 + 2 * max(3, 4, 5)",
+--    "1 + atk - def",
+--    "1 + 2 * max()",
+--    "atk",
+--}
+--
+--for _, v in ipairs(tt) do
+--    local tmp = expGrammar:match(v)
+--    print(v .. " -> " ..dump(tmp))
+--end
