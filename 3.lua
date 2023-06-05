@@ -103,7 +103,7 @@ local expGrammar = P({
 }) * -1
 
 local generateFuncCode
-local generateFormulaCode
+local generateTupleCode
 local generateExpCode
 
 function generateFuncCode(expParser)
@@ -119,18 +119,18 @@ function generateFuncCode(expParser)
     return strfmt("%s(%s)", funcName, tconcat(funcArgs, ","))
 end
 
-function generateFormulaCode(expParser)
+function generateTupleCode(expParser)
     if #expParser == 0 then
         error("exp parser is empty")
         return nil
     end
     local tmp = {}
     for _, v in ipairs(expParser) do
-        local t, isFormula = generateExpCode(v)
+        local t, isTuple = generateExpCode(v)
         if t == nil then
             return nil
         end
-        if isFormula then
+        if isTuple then
             t = strfmt("(%s)", t)
         end
         table.insert(tmp, t)
@@ -154,7 +154,7 @@ function generateExpCode(expParser)
     if expParser[1].t == "func" then
         return generateFuncCode(expParser)
     end
-    return generateFormulaCode(expParser), true
+    return generateTupleCode(expParser), true
 end
 
 local function extractExpVars(expParser, vars)
