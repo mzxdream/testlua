@@ -141,7 +141,7 @@ end
 function generateExpCode(expParser)
     local t = expParser.t
     if t ~= nil then
-        if t == "num" or t == "var" then
+        if t == "num" or t == "var" or t == "opt_binary" then
             return expParser.val
         end
         error("generate t is %s->%s not basic value", t, expParser.val)
@@ -190,7 +190,7 @@ local function analyzeExp(exp)
         error("generate exp code failed:%s", expArr[2])
         return nil
     end
-    return expArr[1], expVars, strfmt("return function() %s end", expCode)
+    return expArr[1], expVars, strfmt("return function() return %s end", expCode)
 end
 
 local bb = {
@@ -209,8 +209,7 @@ for _, v in ipairs(bb) do
     local name, vars, code = analyzeExp(v)
     if name ~= nil then
         print("name = " .. name .. ", vars = " .. dump(vars))
-        print("code = ")
-        print(code)
+        print("code = " .. code)
     end
     print("11111111111111111111111111111111111111111111111111111111111end")
 end
